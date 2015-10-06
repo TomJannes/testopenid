@@ -1,0 +1,16 @@
+{
+  "name": "testopenid",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "node ./server.js"
+  },
+  "dependencies": {
+    "body-parser": "1.x.x",
+    "express": "4.x.x",
+    "express-session": "1.x.x",
+    "morgan": "^1.6.1",
+    "oauth": "^0.9.14",
+    "passport": "0.2.x",
+    "passport-openidconnect": "0.0.1"
+  }
+}
