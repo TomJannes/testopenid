@@ -2,5 +2,13 @@
   "client": {
     "id": "oOEAthze",
     "secret": "PjbB70bgOhxvg51n26X0"
+  },
+  "authorization": {
+    "serverurl": "http://localhost:3000",
+    "callbackurl": "http://localhost:8080/callback"
+  },
+  "server": {
+    "ip": "127.0.0.1",
+    "port": "8080"
   }
 }

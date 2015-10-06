@@ -28,12 +28,12 @@ passport.deserializeUser(function(identifier, done) {
 });
 
 passport.use(new OidcStrategy({
-                authorizationURL: 'https://implicit-auth-tomj.c9.io/dialog/authorize',
-                tokenURL: 'https://implicit-auth-tomj.c9.io/oauth/token',
-                userInfoURL: 'https://implicit-auth-tomj.c9.io/oauth/profile',
+                authorizationURL: config.get('authorization.serverurl') + '/dialog/authorize',
+                tokenURL: config.get('authorization.serverurl') + '/oauth/token',
+                userInfoURL: config.get('authorization.serverurl') + '/oauth/profile',
                 clientID: config.get('client.id'),
                 clientSecret: config.get('client.clientSecret'),
-                callbackURL: 'https://testopenid-tomj-2.c9.io/callback',
+                callbackURL: config.get('authorization.callbackurl'),
                 responseType: 'code'
             },
             function (iss, sub, profile, done) {
@@ -55,5 +55,10 @@ app.get('/callback',
     res.redirect('/');
   });
 
-//Start
+if(config.has('server.port')){
+  process.env.PORT = config.get('server.port');
+}
+if(config.has('server.ip')){
+  process.env.IP = config.get('server.ip');
+}
 http.createServer(app).listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0");

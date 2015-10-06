@@ -2,5 +2,9 @@
   "client": {
     "id": "ljvSib9e",
     "secret": "0hsysJIyZgdInXIF580N"
+  },
+  "authorization": {
+    "serverurl": "https://implicit-auth-tomj.c9.io",
+    "callbackurl": "https://testopenid-tomj-2.c9.io/callback"
   }
 }
