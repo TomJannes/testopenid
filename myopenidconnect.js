@@ -15,7 +15,7 @@ function Strategy(options, verify) {
   passport.Strategy.call(this);
   this.name = 'myopenidconnect';
   this._verify = verify;
-  
+
   if (!options.authorizationURL) throw new Error('OpenIDConnectStrategy requires a authorizationURL option');
   if (!options.tokenURL) throw new Error('OpenIDConnectStrategy requires a tokenURL option');
   if (!options.clientID) throw new Error('OpenIDConnectStrategy requires a clientID option');
@@ -29,11 +29,11 @@ function Strategy(options, verify) {
   this._tokenURL = options.tokenURL;
   this._userInfoURL = options.userInfoURL;
   this._responseType = options.responseType;
-  
+
   this._clientID = options.clientID;
   this._clientSecret = options.clientSecret;
   this._callbackURL = options.callbackURL;
-  
+
   this._scope = options.scope;
   this._scopeSeparator = options.scopeSeparator || ' ';
   this._passReqToCallback = options.passReqToCallback;
@@ -49,13 +49,13 @@ util.inherits(Strategy, passport.Strategy);
 Strategy.prototype.authenticate = function(req, options) {
   options = options || {};
   var self = this;
-  
+
   if (req.query && req.query.error) {
     // TODO: Error information pertaining to OAuth 2.0 flows is encoded in the
     //       query parameters, and should be propagated to the application.
     return this.fail();
   }
-  
+
   var callbackURL = options.callbackURL || this._callbackURL;
   if (callbackURL) {
     var parsed = url.parse(callbackURL);
@@ -65,30 +65,30 @@ Strategy.prototype.authenticate = function(req, options) {
       callbackURL = url.resolve(utils.originalURL(req), callbackURL);
     }
   }
-  
+
   var parsedX = url.parse(req.url);
   if (req.query && req.query.code) {
     var code = req.query.code;
-    
+
     var oauth2 = new OAuth2(this._clientID,  this._clientSecret,
                             '', this._authorizationURL, this._tokenURL);
-    
+
     oauth2.getOAuthAccessToken(code, { grant_type: 'authorization_code', redirect_uri: callbackURL }, function(err, accessToken, refreshToken, params) {
       //if (err) { return self.error(new InternalOAuthError('failed to obtain access token', err)); }
-      
+
       console.log('TOKEN');
       console.log('AT: ' + accessToken);
       console.log('RT: ' + refreshToken);
       console.log(params);
       console.log('----');
-      
+
       var idToken = params['id_token'];
       if (!idToken) { return self.error(new Error('ID Token not present in token response')); }
-      
+
       var idTokenSegments = idToken.split('.')
         , jwtClaimsStr
         , jwtClaims;
-      
+
       // TODO: Try catch this to trap JSON parse errors.
       try {
         jwtClaimsStr = new Buffer(idTokenSegments[1], 'base64').toString();
@@ -96,9 +96,9 @@ Strategy.prototype.authenticate = function(req, options) {
       } catch (ex) {
         return self.error(ex);
       }
-      
+
       console.log(jwtClaims);
-      
+
       var iss = jwtClaims.iss;
       var sub = jwtClaims.sub;
       // Prior to OpenID Connect Basic Client Profile 1.0 - draft 22, the
@@ -107,24 +107,24 @@ Strategy.prototype.authenticate = function(req, options) {
       if (!sub) {
         sub = jwtClaims.user_id;
       }
-      
+
       // TODO: Ensure claims are validated per:
       //       http://openid.net/specs/openid-connect-basic-1_0.html#id_token
-      
-      
+
+
       self._shouldLoadUserProfile(iss, sub, function(err, load) {
         if (err) { return self.error(err); };
-        
+
         console.log('LOAD: ' + load);
-        
+
         if (load) {
           var parsed = url.parse(self._userInfoURL, true);
           parsed.query['schema'] = 'openid';
           delete parsed.search;
           var userInfoURL = url.format(parsed);
-          
+
           console.log('fetch profile: ' + userInfoURL);
-          
+
           // NOTE: We are calling node-oauth's internal `_request` function (as
           //       opposed to `get`) in order to send the access token in the
           //       `Authorization` header rather than as a query parameter.
@@ -134,20 +134,20 @@ Strategy.prototype.authenticate = function(req, options) {
           //       and query parameters, which is a violation of the spec.
           //       Setting the fifth argument of `_request` to `null` works
           //       around this issue.
-          
+
           //oauth2.get(userInfoURL, accessToken, function (err, body, res) {
           oauth2._request("GET", userInfoURL, { 'Authorization': "Bearer " + accessToken, 'Accept': "application/json" }, null, null, function (err, body, res) {
             //if (err) { return self.error(new InternalOAuthError('failed to fetch user profile', err)); }
-            
+
             console.log('PROFILE');
             console.log(body);
             console.log('-------');
-            
+
             var profile = {};
-            
+
             try {
               var json = JSON.parse(body);
-              
+
               profile.id = json.sub;
               // Prior to OpenID Connect Basic Client Profile 1.0 - draft 22, the
               // "sub" key was named "user_id".  Many providers still use the old
@@ -155,15 +155,15 @@ Strategy.prototype.authenticate = function(req, options) {
               if (!profile.id) {
                 profile.id = json.user_id;
               }
-              
+
               profile.displayName = json.name;
               profile.name = { familyName: json.family_name,
                                givenName: json.given_name,
                                middleName: json.middle_name };
-              
+
               profile._raw = body;
               profile._json = json;
-              
+
               onProfileLoaded(profile);
             } catch(e) {
               return self.error(e);
@@ -172,14 +172,14 @@ Strategy.prototype.authenticate = function(req, options) {
         } else {
           onProfileLoaded();
         }
-        
+
         function onProfileLoaded(profile) {
           function verified(err, user, info) {
             if (err) { return self.error(err); }
             if (!user) { return self.fail(info); }
             self.success(user, info);
           }
-        
+
           if (self._passReqToCallback) {
             var arity = self._verify.length;
             if (arity == 9) {
@@ -227,7 +227,7 @@ Strategy.prototype.authenticate = function(req, options) {
     var state = options.state;
     if (state) { params.state = state; }
     // TODO: Implement support for standard OpenID Connect params (display, prompt, etc.)
-    
+
     var location = this._authorizationURL + '?' + querystring.stringify(params);
     this.redirect(location);
   }

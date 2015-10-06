@@ -6,6 +6,7 @@ var session = require('express-session');
 var bodyParser = require('body-parser');
 var logger = require('morgan');
 var OidcStrategy = require('./myopenidconnect').Strategy;
+var config = require('config');
 
 // Express configuration
 var app = express();
@@ -30,25 +31,25 @@ passport.use(new OidcStrategy({
                 authorizationURL: 'https://implicit-auth-tomj.c9.io/dialog/authorize',
                 tokenURL: 'https://implicit-auth-tomj.c9.io/oauth/token',
                 userInfoURL: 'https://implicit-auth-tomj.c9.io/oauth/profile',
-                clientID: 'ljvSib9e',
-                clientSecret: '0hsysJIyZgdInXIF580N',
+                clientID: config.get('client.id'),
+                clientSecret: config.get('client.clientSecret'),
                 callbackURL: 'https://testopenid-tomj-2.c9.io/callback',
                 responseType: 'code'
             },
             function (iss, sub, profile, done) {
-                var temp = 'test';        
-            }) 
+                var temp = 'test';
+            })
 );
-            
 
 
-app.get('/login', 
+
+app.get('/login',
     passport.authenticate('myopenidconnect', { failureRedirect: '/login', failureFlash: true }),
     function(req, res) {
         res.redirect('/');
     });
 
-app.get('/callback', 
+app.get('/callback',
   passport.authenticate('myopenidconnect', { failureRedirect: '/login' }),
   function(req, res) {
     res.redirect('/');
