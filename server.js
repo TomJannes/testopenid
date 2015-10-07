@@ -32,7 +32,7 @@ passport.use(new OidcStrategy({
                 tokenURL: config.get('authorization.serverurl') + '/oauth/token',
                 userInfoURL: config.get('authorization.serverurl') + '/oauth/profile',
                 clientID: config.get('client.id'),
-                clientSecret: config.get('client.clientSecret'),
+                clientSecret: config.get('client.secret'),
                 callbackURL: config.get('authorization.callbackurl'),
                 responseType: 'code'
             },

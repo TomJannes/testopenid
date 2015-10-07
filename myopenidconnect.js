@@ -66,7 +66,6 @@ Strategy.prototype.authenticate = function(req, options) {
     }
   }
 
-  var parsedX = url.parse(req.url);
   if (req.query && req.query.code) {
     var code = req.query.code;
 
