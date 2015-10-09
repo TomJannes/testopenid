@@ -1,7 +1,8 @@
 {
+  "connectionstring": "mongodb://127.0.0.1:27017/authentication",
   "client": {
-    "id": "oOEAthze",
-    "secret": "PjbB70bgOhxvg51n26X0"
+    "id": "ljvSib9e",
+    "secret": "0hsysJIyZgdInXIF580N"
   },
   "authorization": {
     "serverurl": "http://localhost:3000",

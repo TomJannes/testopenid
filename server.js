@@ -7,6 +7,12 @@ var bodyParser = require('body-parser');
 var logger = require('morgan');
 var OidcStrategy = require('./myopenidconnect').Strategy;
 var config = require('config');
+var User = require('./models/user');
+var mongoose = require('mongoose');
+var jsjws = require('jsjws');
+var fs = require('fs'); //todo move to application startup
+
+mongoose.connect(config.get('connectionstring'));
 
 // Express configuration
 var app = express();
@@ -20,11 +26,16 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 passport.serializeUser(function(user, done) {
-  done(null, user.identifier);
+  done(null, user.id);
 });
 
 passport.deserializeUser(function(identifier, done) {
-  done(null, { identifier: identifier });
+  
+  User.findById(function(err, user){
+    if(err) { done(err, null); }
+    if(!user) { done(null, false); }
+       done(null, user);
+    })
 });
 
 passport.use(new OidcStrategy({
@@ -36,12 +47,41 @@ passport.use(new OidcStrategy({
                 callbackURL: config.get('authorization.callbackurl'),
                 responseType: 'code'
             },
-            function (iss, sub, profile, done) {
-                var temp = 'test';
+            function (iss, sub, profile, accessToken, refreshToken, params, done) {
+              var user = {
+                sub: sub,
+                firstname: profile.name.givenName,
+                lastname: profile.name.familyName,
+                email: profile._json.email,
+                language: profile._json.language
+              }
+              //check if issuer is the issuer we expect
+              if(iss !== config.get('openidconnect.issuer')) return (done('illegal issuer'), false)
+              
+              var rawIdToken = params['id_token'];
+              fs.readFile('public_key.pem', 'utf8', function(err, data) {
+                if (err) throw err;
+                var publicKey = jsjws.createPublicKey(data, 'utf8');
+                var signatureIsValid = new jsjws.JWS().verifyJWSByKey(rawIdToken, publicKey, ['RS256']);
+                if(signatureIsValid){
+                  User.findOne({sub: sub}, function(err, user){
+                    if(err) { done(err, null); }
+                    if(!user) { done(null, false); }
+                    //todo: update db info with profile info
+                    done(null, user);
+                  });
+                } else {
+                  done(null, false);
+                }
+              });
             })
 );
 
-
+app.get('/',
+  passport.authenticate('myopenidconnect', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.send('woohoo');
+  });
 
 app.get('/login',
     passport.authenticate('myopenidconnect', { failureRedirect: '/login', failureFlash: true }),
@@ -52,7 +92,7 @@ app.get('/login',
 app.get('/callback',
   passport.authenticate('myopenidconnect', { failureRedirect: '/login' }),
   function(req, res) {
-    res.redirect('/');
+    res.send('why cant i redirect here?');
   });
 
 if(config.has('server.port')){

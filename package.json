@@ -9,9 +9,15 @@
     "config": "^1.16.0",
     "express": "4.x.x",
     "express-session": "1.x.x",
+    "jsjws": "^2.0.4",
+    "mongoose": "^4.1.10",
     "morgan": "^1.6.1",
     "oauth": "^0.9.14",
     "passport": "0.2.x",
     "passport-openidconnect": "0.0.1"
+  },
+  "devDependencies": {
+    "mongodb": "^2.0.45",
+    "mongodb-migrations": "^0.5.0"
   }
 }

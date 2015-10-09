@@ -1,0 +1,5 @@
+{
+    "openidconnect": {
+        "issuer": "http://my.openidconnecttest.com"
+    }
+}
