@@ -9,7 +9,7 @@ var OidcStrategy = require('./myopenidconnect').Strategy;
 var config = require('config');
 var User = require('./models/user');
 var mongoose = require('mongoose');
-var jsjws = require('jsjws');
+var jwt = require('jsonwebtoken');
 var fs = require('fs'); //todo move to application startup
 
 mongoose.connect(config.get('connectionstring'));
@@ -45,34 +45,25 @@ passport.use(new OidcStrategy({
                 clientID: config.get('client.id'),
                 clientSecret: config.get('client.secret'),
                 callbackURL: config.get('authorization.callbackurl'),
-                responseType: 'code'
+                responseType: 'code',
+                prompt: 'none'
             },
             function (iss, sub, profile, accessToken, refreshToken, params, done) {
-              var user = {
-                sub: sub,
-                firstname: profile.name.givenName,
-                lastname: profile.name.familyName,
-                email: profile._json.email,
-                language: profile._json.language
-              }
-              //check if issuer is the issuer we expect
-              if(iss !== config.get('openidconnect.issuer')) return (done('illegal issuer'), false)
-              
               var rawIdToken = params['id_token'];
-              fs.readFile('public_key.pem', 'utf8', function(err, data) {
+              fs.readFile('public_key.pem', 'utf8', function(err, cert) {
                 if (err) throw err;
-                var publicKey = jsjws.createPublicKey(data, 'utf8');
-                var signatureIsValid = new jsjws.JWS().verifyJWSByKey(rawIdToken, publicKey, ['RS256']);
-                if(signatureIsValid){
-                  User.findOne({sub: sub}, function(err, user){
+                var verificationChecks = {
+                  audience: config.get('client.id'),
+                  issuer: config.get('openidconnect.issuer')
+                };
+                jwt.verify(rawIdToken, cert, verificationChecks, function(err, decoded) {
+                  if(err) { done(err, null); }
+                  User.findOne({sub: decoded.sub}, function(err, user){
                     if(err) { done(err, null); }
                     if(!user) { done(null, false); }
-                    //todo: update db info with profile info
                     done(null, user);
                   });
-                } else {
-                  done(null, false);
-                }
+                });
               });
             })
 );

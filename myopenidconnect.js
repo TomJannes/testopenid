@@ -29,6 +29,7 @@ function Strategy(options, verify) {
   this._tokenURL = options.tokenURL;
   this._userInfoURL = options.userInfoURL;
   this._responseType = options.responseType;
+  this._prompt = options.prompt;
 
   this._clientID = options.clientID;
   this._clientSecret = options.clientSecret;
@@ -215,6 +216,7 @@ Strategy.prototype.authenticate = function(req, options) {
     params['response_type'] = this._responseType;
     params['client_id'] = this._clientID;
     params['redirect_uri'] = callbackURL;
+    params['prompt'] = this._prompt;
     var scope = options.scope || this._scope;
     if (Array.isArray(scope)) { scope = scope.join(this._scopeSeparator); }
     if (scope) {
