@@ -1,7 +1,7 @@
 {
-    "host": "tomj-testopenid-1971049",
-    "port": "27017",
-    "db": "testopenid",
-    "collection": "migrations",
-    "directory": "./migrations"
+  "host": "tomj-testopenid-1971049",
+  "port": "27017",
+  "db": "testopenid",
+  "collection": "migrations",
+  "directory": "./migrations"
 }

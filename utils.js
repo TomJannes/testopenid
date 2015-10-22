@@ -1,3 +1,4 @@
+'use strict';
 /**
  * Reconstructs the original URL of the request.
  *
@@ -7,18 +8,16 @@
  * If the request passed through any proxies that terminate SSL, the
  * `X-Forwarded-Proto` header is used to detect if the request was encrypted to
  * the proxy.
- * 
+ *
  * @param {Object} req blah
- * @returns {String}
+ * @returns {String} original url
  * @api private
  */
 exports.originalURL = function(req) {
-  var headers = req.headers
-    , protocol = (req.connection.encrypted || req.headers['x-forwarded-proto'] == 'https')
-               ? 'https'
-               : 'http'
-    , host = headers.host
-    , path = req.url || '';
+  var headers = req.headers;
+  var protocol = (req.connection.encrypted || req.headers['x-forwarded-proto'] === 'https') ? 'https' : 'http';
+  var host = headers.host;
+  var path = req.url || '';
   return protocol + '://' + host + path;
 };
 
@@ -27,7 +26,7 @@ exports.originalURL = function(req) {
  *
  *     var a = { foo: 'bar' }
  *       , b = { bar: 'baz' };
- *     
+ *
  *     utils.merge(a, b);
  *     // => { foo: 'bar', bar: 'baz' }
  *
@@ -37,10 +36,12 @@ exports.originalURL = function(req) {
  * @api private
  */
 
-exports.merge = function(a, b){
+exports.merge = function(a, b) {
   if (a && b) {
     for (var key in b) {
-      a[key] = b[key];
+      if (b.hasOwnProperty(key)) {
+        a[key] = b[key];
+      }
     }
   }
   return a;

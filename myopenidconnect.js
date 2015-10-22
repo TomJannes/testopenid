@@ -1,3 +1,4 @@
+'use strict';
 /**
  * Module dependencies.
  */
@@ -7,7 +8,7 @@ var passport = require('passport'),
   util = require('util'),
   utils = require('./utils'),
   OAuth2 = require('oauth').OAuth2;
-//, InternalOAuthError = require('./errors/internaloautherror');
+// , InternalOAuthError = require('./errors/internaloautherror');
 
 
 function Strategy(options, verify) {
@@ -16,11 +17,11 @@ function Strategy(options, verify) {
   this.name = 'myopenidconnect';
   this._verify = verify;
 
-  if (!options.authorizationURL) throw new Error('OpenIDConnectStrategy requires a authorizationURL option');
-  if (!options.tokenURL) throw new Error('OpenIDConnectStrategy requires a tokenURL option');
-  if (!options.clientID) throw new Error('OpenIDConnectStrategy requires a clientID option');
-  if (!options.clientSecret) throw new Error('OpenIDConnectStrategy requires a clientSecret option');
-  if (!options.responseType) throw new Error('OpenIDConnectStrategy requires a responseType option');
+  if (!options.authorizationURL) { throw new Error('OpenIDConnectStrategy requires a authorizationURL option'); }
+  if (!options.tokenURL) { throw new Error('OpenIDConnectStrategy requires a tokenURL option'); }
+  if (!options.clientID) { throw new Error('OpenIDConnectStrategy requires a clientID option'); }
+  if (!options.clientSecret) { throw new Error('OpenIDConnectStrategy requires a clientSecret option'); }
+  if (!options.responseType) { throw new Error('OpenIDConnectStrategy requires a responseType option'); }
   // TODO: Implement support for discover and registration.  This means endpoint
   //       URLs and client IDs will need to be dynamically loaded, on a per-provider
   //       basis.  The above checks can be relaxed, once this is complete.
@@ -37,7 +38,7 @@ function Strategy(options, verify) {
   this._scope = options.scope;
   this._scopeSeparator = options.scopeSeparator || ' ';
   this._passReqToCallback = options.passReqToCallback;
-  this._skipUserProfile = (options.skipUserProfile === undefined) ? false : options.skipUserProfile;
+  this._skipUserProfile = (options.skipUserProfile == null) ? false : options.skipUserProfile;
 }
 
 /**
@@ -86,7 +87,7 @@ Strategy.prototype.authenticate = function(req, options) {
       console.log(params);
       console.log('----');
 
-      var idToken = params['id_token'];
+      var idToken = params.id_token;
       if (!idToken) {
         return self.error(new Error('ID Token not present in token response'));
       }
@@ -98,8 +99,7 @@ Strategy.prototype.authenticate = function(req, options) {
       try {
         jwtClaimsStr = new Buffer(idTokenSegments[1], 'base64').toString();
         jwtClaims = JSON.parse(jwtClaimsStr);
-      }
-      catch (ex) {
+      } catch (ex) {
         return self.error(ex);
       }
 
@@ -118,16 +118,56 @@ Strategy.prototype.authenticate = function(req, options) {
       //       http://openid.net/specs/openid-connect-basic-1_0.html#id_token
 
 
-      self._shouldLoadUserProfile(iss, sub, function(err, load) {
-        if (err) {
-          return self.error(err);
-        };
+      self._shouldLoadUserProfile(iss, sub, function(loadProfileErr, load) {
+        if (loadProfileErr) {
+          return self.error(loadProfileErr);
+        }
 
         console.log('LOAD: ' + load);
 
+        function onProfileLoaded(profile) {
+          function verified(verificationErr, user, info) {
+            if (verificationErr) {
+              return self.error(verificationErr);
+            }
+            if (!user) {
+              return self.fail(info);
+            }
+            self.success(user, info);
+          }
+
+          if (self._passReqToCallback) {
+            var arity = self._verify.length;
+            if (arity === 9) {
+              self._verify(req, iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
+            } else if (arity === 8) {
+              self._verify(req, iss, sub, profile, accessToken, refreshToken, params, verified);
+            } else if (arity === 7) {
+              self._verify(req, iss, sub, profile, accessToken, refreshToken, verified);
+            } else if (arity === 5) {
+              self._verify(req, iss, sub, profile, verified);
+            } else { // arity == 4
+              self._verify(req, iss, sub, verified);
+            }
+          } else {
+            arity = self._verify.length;
+            if (arity === 8) {
+              self._verify(iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
+            } else if (arity === 7) {
+              self._verify(iss, sub, profile, accessToken, refreshToken, params, verified);
+            } else if (arity === 6) {
+              self._verify(iss, sub, profile, accessToken, refreshToken, verified);
+            } else if (arity === 4) {
+              self._verify(iss, sub, profile, verified);
+            } else { // arity == 3
+              self._verify(iss, sub, verified);
+            }
+          }
+        }
+
         if (load) {
-          var parsed = url.parse(self._userInfoURL, true);
-          parsed.query['schema'] = 'openid';
+          var parsedUrl = url.parse(self._userInfoURL, true);
+          parsedUrl.query.schema = 'openid';
           delete parsed.search;
           var userInfoURL = url.format(parsed);
 
@@ -143,12 +183,12 @@ Strategy.prototype.authenticate = function(req, options) {
           //       Setting the fifth argument of `_request` to `null` works
           //       around this issue.
 
-          //oauth2.get(userInfoURL, accessToken, function (err, body, res) {
-          oauth2._request("GET", userInfoURL, {
-            'Authorization': "Bearer " + accessToken,
-            'Accept': "application/json"
-          }, null, null, function(err, body, res) {
-            if (err) { return self.error(new Error('failed to fetch user profile', err)); }
+          // oauth2.get(userInfoURL, accessToken, function (err, body, res) {
+          oauth2._request('GET', userInfoURL, {
+            'Authorization': 'Bearer ' + accessToken,
+            'Accept': 'application/json'
+          }, null, null, function(getProfileErr, body) {
+            if (getProfileErr) { return self.error(new Error('failed to fetch user profile', getProfileErr)); }
 
             console.log('PROFILE');
             console.log(body);
@@ -178,82 +218,28 @@ Strategy.prototype.authenticate = function(req, options) {
               profile._json = json;
 
               onProfileLoaded(profile);
-            }
-            catch (e) {
+            } catch (e) {
               return self.error(e);
             }
           });
-        }
-        else {
+        } else {
           onProfileLoaded();
-        }
-
-        function onProfileLoaded(profile) {
-          function verified(err, user, info) {
-            if (err) {
-              return self.error(err);
-            }
-            if (!user) {
-              return self.fail(info);
-            }
-            self.success(user, info);
-          }
-
-          if (self._passReqToCallback) {
-            var arity = self._verify.length;
-            if (arity == 9) {
-              self._verify(req, iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
-            }
-            else if (arity == 8) {
-              self._verify(req, iss, sub, profile, accessToken, refreshToken, params, verified);
-            }
-            else if (arity == 7) {
-              self._verify(req, iss, sub, profile, accessToken, refreshToken, verified);
-            }
-            else if (arity == 5) {
-              self._verify(req, iss, sub, profile, verified);
-            }
-            else { // arity == 4
-              self._verify(req, iss, sub, verified);
-            }
-          }
-          else {
-            var arity = self._verify.length;
-            if (arity == 8) {
-              self._verify(iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
-            }
-            else if (arity == 7) {
-              self._verify(iss, sub, profile, accessToken, refreshToken, params, verified);
-            }
-            else if (arity == 6) {
-              self._verify(iss, sub, profile, accessToken, refreshToken, verified);
-            }
-            else if (arity == 4) {
-              self._verify(iss, sub, profile, verified);
-            }
-            else { // arity == 3
-              self._verify(iss, sub, verified);
-            }
-          }
         }
       });
     });
-  }
-  else {
+  } else {
     var params = this.authorizationParams(options);
-    //var params = {};
-    params['response_type'] = this._responseType;
-    params['client_id'] = this._clientID;
-    params['redirect_uri'] = callbackURL;
-    params['prompt'] = this._prompt;
+    params.response_type = this._responseType;
+    params.client_id = this._clientID;
+    params.redirect_uri = callbackURL;
+    params.prompt = this._prompt;
     var scope = options.scope || this._scope;
     if (Array.isArray(scope)) {
       scope = scope.join(this._scopeSeparator);
     }
     if (scope) {
       params.scope = 'openid' + this._scopeSeparator + scope;
-    }
-    else {
+    } else {
       params.scope = 'openid';
     }
     // TODO: Add support for automatically generating a random state for verification.
@@ -282,7 +268,7 @@ Strategy.prototype.authenticate = function(req, options) {
  * @api protected
  */
 Strategy.prototype.authorizationParams = function(options) {
-  return {};
+  return options;
 };
 
 /**
@@ -305,8 +291,7 @@ Strategy.prototype._shouldLoadUserProfile = function(issuer, subject, done) {
       }
       return done(null, false);
     });
-  }
-  else {
+  } else {
     var skip = (typeof this._skipUserProfile == 'function') ? this._skipUserProfile(issuer, subject) : this._skipUserProfile;
     if (!skip) {
       return done(null, true);
