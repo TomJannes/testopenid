@@ -1,5 +1,6 @@
 {
     "openidconnect": {
-        "issuer": "http://my.openidconnecttest.com"
+        "issuer": "http://my.openidconnecttest.com",
+        "refresh_treshold": 10
     }
 }

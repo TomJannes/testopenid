@@ -11,6 +11,8 @@ var User = require('./models/user');
 var mongoose = require('mongoose');
 var jwt = require('jsonwebtoken');
 var fs = require('fs'); //todo move to application startup
+var ensureLogin = require('connect-ensure-login');
+var refresh = require('./openidRefresh');
 
 mongoose.connect(config.get('connectionstring'));
 
@@ -18,27 +20,48 @@ mongoose.connect(config.get('connectionstring'));
 var app = express();
 app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
-app.use(bodyParser());
-app.use(session({ secret: 'keyboard cat1'}));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
+
+app.use(session({
+    secret: 'keyboard cat1',
+    resave: false,
+    saveUninitialized: true
+}));
 app.use(logger('dev'));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 passport.serializeUser(function(user, done) {
-  done(null, user.id);
+  return done(null, user.id);
 });
 
 passport.deserializeUser(function(identifier, done) {
-  
-  User.findById(function(err, user){
-    if(err) { done(err, null); }
-    if(!user) { done(null, false); }
-       done(null, user);
-    })
+  User.findById(identifier, function(err, user){
+    if(err) { return done(err, null); }
+    if(!user) { return done(null, false); }
+    var needsToRefresh = new Date() > new Date(user.accessToken.expiryDate.getTime() - config.get('openidconnect.refresh_treshold')*60000);
+    if(needsToRefresh) {
+      refresh.requestNewAccessToken('myopenidconnect', user.refreshToken.token, function(err, accessToken, refreshToken, params){
+        if(err) { return done(err, null); }
+        user.accessToken.token = accessToken;
+        user.accessToken.expiryDate = params['expires_in'];
+        user.refreshToken.token = refreshToken;
+        user.save(function(err){
+          if(err) { return done(err, null); }
+          return done(null, user);
+        })
+      });
+    } else {
+      return done(null, user);
+    }
+  });
 });
 
-passport.use(new OidcStrategy({
+var myopenidconnectStrategy = new OidcStrategy({
                 authorizationURL: config.get('authorization.serverurl') + '/dialog/authorize',
                 tokenURL: config.get('authorization.serverurl') + '/oauth/token',
                 userInfoURL: config.get('authorization.serverurl') + '/oauth/profile',
@@ -57,33 +80,59 @@ passport.use(new OidcStrategy({
                   issuer: config.get('openidconnect.issuer')
                 };
                 jwt.verify(rawIdToken, cert, verificationChecks, function(err, decoded) {
-                  if(err) { done(err, null); }
+                  if(err) { return done(err, null); }
                   User.findOne({sub: decoded.sub}, function(err, user){
-                    if(err) { done(err, null); }
-                    if(!user) { done(null, false); }
-                    done(null, user);
+                    if(err) { return done(err, null); }
+                    if(!user) { return done(null, false); }
+                    
+                    user.accessToken = {
+                      token: accessToken,
+                      expiryDate: params['expires_in']
+                    };
+                    user.refreshToken = {
+                      token: refreshToken
+                    };
+                    user.save(function(err){
+                      if(err) { return done(err); }
+                      return done(null, user);
+                    });
                   });
                 });
               });
-            })
-);
+            });
+            
+passport.use('myopenidconnect', myopenidconnectStrategy);
+refresh.use('myopenidconnect', myopenidconnectStrategy);
 
 app.get('/',
-  passport.authenticate('myopenidconnect', { failureRedirect: '/login' }),
   function(req, res) {
     res.send('woohoo');
+    res.end();
   });
 
 app.get('/login',
-    passport.authenticate('myopenidconnect', { failureRedirect: '/login', failureFlash: true }),
+    passport.authenticate('myopenidconnect', { failureRedirect: '/login', session: true }),
     function(req, res) {
         res.redirect('/');
     });
 
 app.get('/callback',
-  passport.authenticate('myopenidconnect', { failureRedirect: '/login' }),
+  passport.authenticate('myopenidconnect', { failureRedirect: '/login', session: true }),
   function(req, res) {
-    res.send('why cant i redirect here?');
+    res.render('callback');
+  });
+  
+app.get('/refresh', 
+  ensureLogin.ensureLoggedIn(),
+  function(req, res) { 
+    res.render('refresh');
+    
+  });
+
+app.post('/refresh', 
+  ensureLogin.ensureLoggedIn(),
+  function(req, res) { 
+    res.send('refreshed');
   });
 
 if(config.has('server.port')){

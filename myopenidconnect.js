@@ -1,17 +1,17 @@
 /**
  * Module dependencies.
  */
-var passport = require('passport')
-  , url = require('url')
-  , querystring= require('querystring')
-  , util = require('util')
-  , utils = require('./utils')
-  , OAuth2 = require('oauth').OAuth2;
-  //, InternalOAuthError = require('./errors/internaloautherror');
+var passport = require('passport'),
+  url = require('url'),
+  querystring = require('querystring'),
+  util = require('util'),
+  utils = require('./utils'),
+  OAuth2 = require('oauth').OAuth2;
+//, InternalOAuthError = require('./errors/internaloautherror');
 
 
 function Strategy(options, verify) {
-  options = options || {}
+  options = options || {};
   passport.Strategy.call(this);
   this.name = 'myopenidconnect';
   this._verify = verify;
@@ -20,11 +20,10 @@ function Strategy(options, verify) {
   if (!options.tokenURL) throw new Error('OpenIDConnectStrategy requires a tokenURL option');
   if (!options.clientID) throw new Error('OpenIDConnectStrategy requires a clientID option');
   if (!options.clientSecret) throw new Error('OpenIDConnectStrategy requires a clientSecret option');
-  if (!options.responseType) throw new Error('OpenIDConnectStrategy requires a responseType option')
+  if (!options.responseType) throw new Error('OpenIDConnectStrategy requires a responseType option');
   // TODO: Implement support for discover and registration.  This means endpoint
   //       URLs and client IDs will need to be dynamically loaded, on a per-provider
   //       basis.  The above checks can be relaxed, once this is complete.
-
   this._authorizationURL = options.authorizationURL;
   this._tokenURL = options.tokenURL;
   this._userInfoURL = options.userInfoURL;
@@ -70,11 +69,16 @@ Strategy.prototype.authenticate = function(req, options) {
   if (req.query && req.query.code) {
     var code = req.query.code;
 
-    var oauth2 = new OAuth2(this._clientID,  this._clientSecret,
-                            '', this._authorizationURL, this._tokenURL);
+    var oauth2 = new OAuth2(this._clientID, this._clientSecret,
+      '', this._authorizationURL, this._tokenURL);
 
-    oauth2.getOAuthAccessToken(code, { grant_type: 'authorization_code', redirect_uri: callbackURL }, function(err, accessToken, refreshToken, params) {
-      //if (err) { return self.error(new InternalOAuthError('failed to obtain access token', err)); }
+    oauth2.getOAuthAccessToken(code, {
+      grant_type: 'authorization_code',
+      redirect_uri: callbackURL
+    }, function(err, accessToken, refreshToken, params) {
+      if (err) {
+        return self.error(new Error('failed to obtain access token', err));
+      }
 
       console.log('TOKEN');
       console.log('AT: ' + accessToken);
@@ -83,17 +87,19 @@ Strategy.prototype.authenticate = function(req, options) {
       console.log('----');
 
       var idToken = params['id_token'];
-      if (!idToken) { return self.error(new Error('ID Token not present in token response')); }
+      if (!idToken) {
+        return self.error(new Error('ID Token not present in token response'));
+      }
 
-      var idTokenSegments = idToken.split('.')
-        , jwtClaimsStr
-        , jwtClaims;
+      var idTokenSegments = idToken.split('.'),
+        jwtClaimsStr, jwtClaims;
 
       // TODO: Try catch this to trap JSON parse errors.
       try {
         jwtClaimsStr = new Buffer(idTokenSegments[1], 'base64').toString();
         jwtClaims = JSON.parse(jwtClaimsStr);
-      } catch (ex) {
+      }
+      catch (ex) {
         return self.error(ex);
       }
 
@@ -113,7 +119,9 @@ Strategy.prototype.authenticate = function(req, options) {
 
 
       self._shouldLoadUserProfile(iss, sub, function(err, load) {
-        if (err) { return self.error(err); };
+        if (err) {
+          return self.error(err);
+        };
 
         console.log('LOAD: ' + load);
 
@@ -136,8 +144,11 @@ Strategy.prototype.authenticate = function(req, options) {
           //       around this issue.
 
           //oauth2.get(userInfoURL, accessToken, function (err, body, res) {
-          oauth2._request("GET", userInfoURL, { 'Authorization': "Bearer " + accessToken, 'Accept': "application/json" }, null, null, function (err, body, res) {
-            //if (err) { return self.error(new InternalOAuthError('failed to fetch user profile', err)); }
+          oauth2._request("GET", userInfoURL, {
+            'Authorization': "Bearer " + accessToken,
+            'Accept': "application/json"
+          }, null, null, function(err, body, res) {
+            if (err) { return self.error(new Error('failed to fetch user profile', err)); }
 
             console.log('PROFILE');
             console.log(body);
@@ -157,26 +168,34 @@ Strategy.prototype.authenticate = function(req, options) {
               }
 
               profile.displayName = json.name;
-              profile.name = { familyName: json.family_name,
-                               givenName: json.given_name,
-                               middleName: json.middle_name };
+              profile.name = {
+                familyName: json.family_name,
+                givenName: json.given_name,
+                middleName: json.middle_name
+              };
 
               profile._raw = body;
               profile._json = json;
 
               onProfileLoaded(profile);
-            } catch(e) {
+            }
+            catch (e) {
               return self.error(e);
             }
           });
-        } else {
+        }
+        else {
           onProfileLoaded();
         }
 
         function onProfileLoaded(profile) {
           function verified(err, user, info) {
-            if (err) { return self.error(err); }
-            if (!user) { return self.fail(info); }
+            if (err) {
+              return self.error(err);
+            }
+            if (!user) {
+              return self.fail(info);
+            }
             self.success(user, info);
           }
 
@@ -184,33 +203,43 @@ Strategy.prototype.authenticate = function(req, options) {
             var arity = self._verify.length;
             if (arity == 9) {
               self._verify(req, iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
-            } else if (arity == 8) {
+            }
+            else if (arity == 8) {
               self._verify(req, iss, sub, profile, accessToken, refreshToken, params, verified);
-            } else if (arity == 7) {
+            }
+            else if (arity == 7) {
               self._verify(req, iss, sub, profile, accessToken, refreshToken, verified);
-            } else if (arity == 5) {
+            }
+            else if (arity == 5) {
               self._verify(req, iss, sub, profile, verified);
-            } else { // arity == 4
+            }
+            else { // arity == 4
               self._verify(req, iss, sub, verified);
             }
-          } else {
+          }
+          else {
             var arity = self._verify.length;
             if (arity == 8) {
               self._verify(iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
-            } else if (arity == 7) {
+            }
+            else if (arity == 7) {
               self._verify(iss, sub, profile, accessToken, refreshToken, params, verified);
-            } else if (arity == 6) {
+            }
+            else if (arity == 6) {
               self._verify(iss, sub, profile, accessToken, refreshToken, verified);
-            } else if (arity == 4) {
+            }
+            else if (arity == 4) {
               self._verify(iss, sub, profile, verified);
-            } else { // arity == 3
+            }
+            else { // arity == 3
               self._verify(iss, sub, verified);
             }
           }
         }
       });
     });
-  } else {
+  }
+  else {
     var params = this.authorizationParams(options);
     //var params = {};
     params['response_type'] = this._responseType;
@@ -218,21 +247,26 @@ Strategy.prototype.authenticate = function(req, options) {
     params['redirect_uri'] = callbackURL;
     params['prompt'] = this._prompt;
     var scope = options.scope || this._scope;
-    if (Array.isArray(scope)) { scope = scope.join(this._scopeSeparator); }
+    if (Array.isArray(scope)) {
+      scope = scope.join(this._scopeSeparator);
+    }
     if (scope) {
       params.scope = 'openid' + this._scopeSeparator + scope;
-    } else {
+    }
+    else {
       params.scope = 'openid';
     }
     // TODO: Add support for automatically generating a random state for verification.
     var state = options.state;
-    if (state) { params.state = state; }
+    if (state) {
+      params.state = state;
+    }
     // TODO: Implement support for standard OpenID Connect params (display, prompt, etc.)
 
     var location = this._authorizationURL + '?' + querystring.stringify(params);
     this.redirect(location);
   }
-}
+};
 
 /**
  * Return extra parameters to be included in the authorization request.
@@ -249,7 +283,7 @@ Strategy.prototype.authenticate = function(req, options) {
  */
 Strategy.prototype.authorizationParams = function(options) {
   return {};
-}
+};
 
 /**
  * Check if should load user profile, contingent upon options.
@@ -263,16 +297,23 @@ Strategy.prototype._shouldLoadUserProfile = function(issuer, subject, done) {
   if (typeof this._skipUserProfile == 'function' && this._skipUserProfile.length > 1) {
     // async
     this._skipUserProfile(issuer, subject, function(err, skip) {
-      if (err) { return done(err); }
-      if (!skip) { return done(null, true); }
+      if (err) {
+        return done(err);
+      }
+      if (!skip) {
+        return done(null, true);
+      }
       return done(null, false);
     });
-  } else {
+  }
+  else {
     var skip = (typeof this._skipUserProfile == 'function') ? this._skipUserProfile(issuer, subject) : this._skipUserProfile;
-    if (!skip) { return done(null, true); }
+    if (!skip) {
+      return done(null, true);
+    }
     return done(null, false);
   }
-}
+};
 
 
 /**

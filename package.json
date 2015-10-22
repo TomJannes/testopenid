@@ -7,8 +7,10 @@
   "dependencies": {
     "body-parser": "1.x.x",
     "config": "^1.16.0",
+    "connect-ensure-login": "^0.1.1",
     "express": "4.x.x",
     "express-session": "1.x.x",
+    "jade": "^1.11.0",
     "jsonwebtoken": "^5.4.0",
     "mongoose": "^4.1.10",
     "morgan": "^1.6.1",
@@ -17,6 +19,8 @@
     "passport-openidconnect": "0.0.1"
   },
   "devDependencies": {
+    "eslint": "^1.7.2",
+    "eslint-config-eslint": "^1.0.1",
     "mongodb": "^2.0.45",
     "mongodb-migrations": "^0.5.0"
   }

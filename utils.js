@@ -7,8 +7,9 @@
  * If the request passed through any proxies that terminate SSL, the
  * `X-Forwarded-Proto` header is used to detect if the request was encrypted to
  * the proxy.
- *
- * @return {String}
+ * 
+ * @param {Object} req blah
+ * @returns {String}
  * @api private
  */
 exports.originalURL = function(req) {
@@ -32,7 +33,7 @@ exports.originalURL = function(req) {
  *
  * @param {Object} a
  * @param {Object} b
- * @return {Object}
+ * @returns {Object}
  * @api private
  */
 
