@@ -180,12 +180,12 @@ Strategy.prototype.authenticate = function(req, options) {
           //       Setting the fifth argument of `_request` to `null` works
           //       around this issue.
 
-          //oauth2.get(userInfoURL, accessToken, function (err, body, res) {
+          // oauth2.get(userInfoURL, accessToken, function (err, body, res) {
           oauth2._request('GET', userInfoURL, {
             'Authorization': 'Bearer ' + accessToken,
             'Accept': 'application/json'
-          }, null, null, function(err, body, res) {
-            if (err) { return self.error(new Error('failed to fetch user profile', err)); }
+          }, null, null, function(getUserInfoErr, body) {
+            if (getUserInfoErr) { return self.error(new Error('failed to fetch user profile', getUserInfoErr)); }
 
             console.log('PROFILE');
             console.log(body);
@@ -226,7 +226,6 @@ Strategy.prototype.authenticate = function(req, options) {
     });
   } else {
     var params = this.authorizationParams(options);
-    //var params = {};
     params.response_type = this._responseType;
     params.client_id = this._clientID;
     params.redirect_uri = callbackURL;
@@ -266,7 +265,7 @@ Strategy.prototype.authenticate = function(req, options) {
  * @api protected
  */
 Strategy.prototype.authorizationParams = function(options) {
-  return {};
+  return options || {};
 };
 
 /**
