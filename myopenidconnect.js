@@ -86,7 +86,7 @@ Strategy.prototype.authenticate = function(req, options) {
       console.log(params);
       console.log('----');
 
-      var idToken = params['id_token'];
+      var idToken = params.id_token;
       if (!idToken) {
         return self.error(new Error('ID Token not present in token response'));
       }
@@ -228,10 +228,10 @@ Strategy.prototype.authenticate = function(req, options) {
   } else {
     var params = this.authorizationParams(options);
     //var params = {};
-    params['response_type'] = this._responseType;
-    params['client_id'] = this._clientID;
-    params['redirect_uri'] = callbackURL;
-    params['prompt'] = this._prompt;
+    params.response_type = this._responseType;
+    params.client_id = this._clientID;
+    params.redirect_uri = callbackURL;
+    params.prompt = this._prompt;
     var scope = options.scope || this._scope;
     if (Array.isArray(scope)) {
       scope = scope.join(this._scopeSeparator);
