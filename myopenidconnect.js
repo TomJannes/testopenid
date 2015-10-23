@@ -117,55 +117,54 @@ Strategy.prototype.authenticate = function(req, options) {
       //       http://openid.net/specs/openid-connect-basic-1_0.html#id_token
 
       function onProfileLoaded(profile) {
-          function verified(err, user, info) {
-            if (err) {
-              return self.error(err);
-            }
-            if (!user) {
-              return self.fail(info);
-            }
-            self.success(user, info);
+        function verified(verificationErr, user, info) {
+          if (verificationErr) {
+            return self.error(verificationErr);
           }
-
-          if (self._passReqToCallback) {
-            var arity = self._verify.length;
-            if (arity === 9) {
-              self._verify(req, iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
-            } else if (arity === 8) {
-              self._verify(req, iss, sub, profile, accessToken, refreshToken, params, verified);
-            } else if (arity === 7) {
-              self._verify(req, iss, sub, profile, accessToken, refreshToken, verified);
-            } else if (arity === 5) {
-              self._verify(req, iss, sub, profile, verified);
-            } else { // arity == 4
-              self._verify(req, iss, sub, verified);
-            }
-          } else {
-            var arity = self._verify.length;
-            if (arity === 8) {
-              self._verify(iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
-            } else if (arity === 7) {
-              self._verify(iss, sub, profile, accessToken, refreshToken, params, verified);
-            } else if (arity === 6) {
-              self._verify(iss, sub, profile, accessToken, refreshToken, verified);
-            } else if (arity === 4) {
-              self._verify(iss, sub, profile, verified);
-            } else { // arity == 3
-              self._verify(iss, sub, verified);
-            }
+          if (!user) {
+            return self.fail(info);
+          }
+          self.success(user, info);
+        }
+        if (self._passReqToCallback) {
+          var arity = self._verify.length;
+          if (arity === 9) {
+            self._verify(req, iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
+          } else if (arity === 8) {
+            self._verify(req, iss, sub, profile, accessToken, refreshToken, params, verified);
+          } else if (arity === 7) {
+            self._verify(req, iss, sub, profile, accessToken, refreshToken, verified);
+          } else if (arity === 5) {
+            self._verify(req, iss, sub, profile, verified);
+          } else { // arity == 4
+            self._verify(req, iss, sub, verified);
+          }
+        } else {
+          arity = self._verify.length;
+          if (arity === 8) {
+            self._verify(iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
+          } else if (arity === 7) {
+            self._verify(iss, sub, profile, accessToken, refreshToken, params, verified);
+          } else if (arity === 6) {
+            self._verify(iss, sub, profile, accessToken, refreshToken, verified);
+          } else if (arity === 4) {
+            self._verify(iss, sub, profile, verified);
+          } else { // arity == 3
+            self._verify(iss, sub, verified);
           }
         }
+      }
 
-      self._shouldLoadUserProfile(iss, sub, function(err, load) {
-        if (err) {
-          return self.error(err);
-        };
+      self._shouldLoadUserProfile(iss, sub, function(loadProfileErr, load) {
+        if (loadProfileErr) {
+          return self.error(loadProfileErr);
+        }
 
         console.log('LOAD: ' + load);
 
         if (load) {
-          var parsed = url.parse(self._userInfoURL, true);
-          parsed.query['schema'] = 'openid';
+          var parsedUrl = url.parse(self._userInfoURL, true);
+          parsedUrl.query.schema = 'openid';
           delete parsed.search;
           var userInfoURL = url.format(parsed);
 
