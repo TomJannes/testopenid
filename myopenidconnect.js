@@ -1,4 +1,3 @@
-'use strict';
 /**
  * Module dependencies.
  */
@@ -8,7 +7,7 @@ var passport = require('passport'),
   util = require('util'),
   utils = require('./utils'),
   OAuth2 = require('oauth').OAuth2;
-// , InternalOAuthError = require('./errors/internaloautherror');
+//, InternalOAuthError = require('./errors/internaloautherror');
 
 
 function Strategy(options, verify) {
@@ -17,11 +16,11 @@ function Strategy(options, verify) {
   this.name = 'myopenidconnect';
   this._verify = verify;
 
-  if (!options.authorizationURL) { throw new Error('OpenIDConnectStrategy requires a authorizationURL option'); }
-  if (!options.tokenURL) { throw new Error('OpenIDConnectStrategy requires a tokenURL option'); }
-  if (!options.clientID) { throw new Error('OpenIDConnectStrategy requires a clientID option'); }
-  if (!options.clientSecret) { throw new Error('OpenIDConnectStrategy requires a clientSecret option'); }
-  if (!options.responseType) { throw new Error('OpenIDConnectStrategy requires a responseType option'); }
+  if (!options.authorizationURL) throw new Error('OpenIDConnectStrategy requires a authorizationURL option');
+  if (!options.tokenURL) throw new Error('OpenIDConnectStrategy requires a tokenURL option');
+  if (!options.clientID) throw new Error('OpenIDConnectStrategy requires a clientID option');
+  if (!options.clientSecret) throw new Error('OpenIDConnectStrategy requires a clientSecret option');
+  if (!options.responseType) throw new Error('OpenIDConnectStrategy requires a responseType option');
   // TODO: Implement support for discover and registration.  This means endpoint
   //       URLs and client IDs will need to be dynamically loaded, on a per-provider
   //       basis.  The above checks can be relaxed, once this is complete.
@@ -38,7 +37,7 @@ function Strategy(options, verify) {
   this._scope = options.scope;
   this._scopeSeparator = options.scopeSeparator || ' ';
   this._passReqToCallback = options.passReqToCallback;
-  this._skipUserProfile = (options.skipUserProfile == null) ? false : options.skipUserProfile;
+  this._skipUserProfile = (options.skipUserProfile === undefined) ? false : options.skipUserProfile;
 }
 
 /**
@@ -87,7 +86,7 @@ Strategy.prototype.authenticate = function(req, options) {
       console.log(params);
       console.log('----');
 
-      var idToken = params.id_token;
+      var idToken = params['id_token'];
       if (!idToken) {
         return self.error(new Error('ID Token not present in token response'));
       }
@@ -116,19 +115,11 @@ Strategy.prototype.authenticate = function(req, options) {
 
       // TODO: Ensure claims are validated per:
       //       http://openid.net/specs/openid-connect-basic-1_0.html#id_token
-
-
-      self._shouldLoadUserProfile(iss, sub, function(loadProfileErr, load) {
-        if (loadProfileErr) {
-          return self.error(loadProfileErr);
-        }
-
-        console.log('LOAD: ' + load);
-
-        function onProfileLoaded(profile) {
-          function verified(verificationErr, user, info) {
-            if (verificationErr) {
-              return self.error(verificationErr);
+      
+      function onProfileLoaded(profile) {
+          function verified(err, user, info) {
+            if (err) {
+              return self.error(err);
             }
             if (!user) {
               return self.fail(info);
@@ -150,7 +141,7 @@ Strategy.prototype.authenticate = function(req, options) {
               self._verify(req, iss, sub, verified);
             }
           } else {
-            arity = self._verify.length;
+            var arity = self._verify.length;
             if (arity === 8) {
               self._verify(iss, sub, profile, jwtClaims, accessToken, refreshToken, params, verified);
             } else if (arity === 7) {
@@ -165,9 +156,16 @@ Strategy.prototype.authenticate = function(req, options) {
           }
         }
 
+      self._shouldLoadUserProfile(iss, sub, function(err, load) {
+        if (err) {
+          return self.error(err);
+        };
+
+        console.log('LOAD: ' + load);
+
         if (load) {
-          var parsedUrl = url.parse(self._userInfoURL, true);
-          parsedUrl.query.schema = 'openid';
+          var parsed = url.parse(self._userInfoURL, true);
+          parsed.query['schema'] = 'openid';
           delete parsed.search;
           var userInfoURL = url.format(parsed);
 
@@ -183,12 +181,12 @@ Strategy.prototype.authenticate = function(req, options) {
           //       Setting the fifth argument of `_request` to `null` works
           //       around this issue.
 
-          // oauth2.get(userInfoURL, accessToken, function (err, body, res) {
+          //oauth2.get(userInfoURL, accessToken, function (err, body, res) {
           oauth2._request('GET', userInfoURL, {
             'Authorization': 'Bearer ' + accessToken,
             'Accept': 'application/json'
-          }, null, null, function(getProfileErr, body) {
-            if (getProfileErr) { return self.error(new Error('failed to fetch user profile', getProfileErr)); }
+          }, null, null, function(err, body, res) {
+            if (err) { return self.error(new Error('failed to fetch user profile', err)); }
 
             console.log('PROFILE');
             console.log(body);
@@ -229,10 +227,11 @@ Strategy.prototype.authenticate = function(req, options) {
     });
   } else {
     var params = this.authorizationParams(options);
-    params.response_type = this._responseType;
-    params.client_id = this._clientID;
-    params.redirect_uri = callbackURL;
-    params.prompt = this._prompt;
+    //var params = {};
+    params['response_type'] = this._responseType;
+    params['client_id'] = this._clientID;
+    params['redirect_uri'] = callbackURL;
+    params['prompt'] = this._prompt;
     var scope = options.scope || this._scope;
     if (Array.isArray(scope)) {
       scope = scope.join(this._scopeSeparator);
@@ -268,7 +267,7 @@ Strategy.prototype.authenticate = function(req, options) {
  * @api protected
  */
 Strategy.prototype.authorizationParams = function(options) {
-  return options;
+  return {};
 };
 
 /**
