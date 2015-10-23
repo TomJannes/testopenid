@@ -166,7 +166,7 @@ Strategy.prototype.authenticate = function(req, options) {
           var parsedUrl = url.parse(self._userInfoURL, true);
           parsedUrl.query.schema = 'openid';
           delete parsed.search;
-          var userInfoURL = url.format(parsed);
+          var userInfoURL = url.format(parsedUrl);
 
           console.log('fetch profile: ' + userInfoURL);
 
