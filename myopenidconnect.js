@@ -1,3 +1,4 @@
+'use strict';
 /**
  * Module dependencies.
  */
@@ -7,7 +8,6 @@ var passport = require('passport'),
   util = require('util'),
   utils = require('./utils'),
   OAuth2 = require('oauth').OAuth2;
-//, InternalOAuthError = require('./errors/internaloautherror');
 
 
 function Strategy(options, verify) {
@@ -16,11 +16,11 @@ function Strategy(options, verify) {
   this.name = 'myopenidconnect';
   this._verify = verify;
 
-  if (!options.authorizationURL) throw new Error('OpenIDConnectStrategy requires a authorizationURL option');
-  if (!options.tokenURL) throw new Error('OpenIDConnectStrategy requires a tokenURL option');
-  if (!options.clientID) throw new Error('OpenIDConnectStrategy requires a clientID option');
-  if (!options.clientSecret) throw new Error('OpenIDConnectStrategy requires a clientSecret option');
-  if (!options.responseType) throw new Error('OpenIDConnectStrategy requires a responseType option');
+  if (!options.authorizationURL) { throw new Error('OpenIDConnectStrategy requires a authorizationURL option'); }
+  if (!options.tokenURL) { throw new Error('OpenIDConnectStrategy requires a tokenURL option'); }
+  if (!options.clientID) { throw new Error('OpenIDConnectStrategy requires a clientID option'); }
+  if (!options.clientSecret) { throw new Error('OpenIDConnectStrategy requires a clientSecret option'); }
+  if (!options.responseType) { throw new Error('OpenIDConnectStrategy requires a responseType option'); }
   // TODO: Implement support for discover and registration.  This means endpoint
   //       URLs and client IDs will need to be dynamically loaded, on a per-provider
   //       basis.  The above checks can be relaxed, once this is complete.
@@ -37,7 +37,7 @@ function Strategy(options, verify) {
   this._scope = options.scope;
   this._scopeSeparator = options.scopeSeparator || ' ';
   this._passReqToCallback = options.passReqToCallback;
-  this._skipUserProfile = (options.skipUserProfile === undefined) ? false : options.skipUserProfile;
+  this._skipUserProfile = (options.skipUserProfile == null) ? false : options.skipUserProfile;
 }
 
 /**
@@ -86,7 +86,7 @@ Strategy.prototype.authenticate = function(req, options) {
       console.log(params);
       console.log('----');
 
-      var idToken = params['id_token'];
+      var idToken = params.id_token;
       if (!idToken) {
         return self.error(new Error('ID Token not present in token response'));
       }
@@ -115,7 +115,7 @@ Strategy.prototype.authenticate = function(req, options) {
 
       // TODO: Ensure claims are validated per:
       //       http://openid.net/specs/openid-connect-basic-1_0.html#id_token
-      
+
       function onProfileLoaded(profile) {
           function verified(err, user, info) {
             if (err) {
